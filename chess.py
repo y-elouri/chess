@@ -19,6 +19,7 @@ class ChessBoard(NamedTuple):
     promoted: int
     w_king: int
     b_king: int
+    check: bool = False
 
     def __repr__(self) -> str:
         r = f"  {''.join('%2s' % c for c in 'abcdefgh')}\n"
@@ -48,8 +49,12 @@ class ChessBoard(NamedTuple):
         return True
 
     @property
-    def is_check(self):
+    def check(self):
         return bool(self.board[self.w_king]&16) if self.player else bool(self.board[self.b_king]&16)
+
+    @check.setter
+    def check(self, value):
+        self.check == value
 
 def new_game(): #FIXME: update rook initial flags
     with open('board.bin', mode='rb') as f:
@@ -130,17 +135,6 @@ def move(chess_board, square, position): # TODO: input validation, valid non kin
         king = chess_board.w_king if chess_board.player else chess_board.b_king
     next_king = chess_board.b_king if chess_board.player else chess_board.w_king
 
-    # remove current player's check flag
-    if next_board[king]&16:
-        if next_board[king] == 31: ## ♔
-            next_board[king] = 15
-        if next_board[king] == 23: ## ♔
-            next_board[king] = 7
-        if next_board[king] == 63: ## ♚
-            next_board[king] = 47
-        if next_board[king] == 55: ## ♚
-            next_board[king] = 39
-
     # reset en passant
     en_passant = 0
 
@@ -168,23 +162,19 @@ def move(chess_board, square, position): # TODO: input validation, valid non kin
     elif next_board[target] == 47: ## ♚
         next_board[target] = 39 # remove castling flag
 
-    # raise next player's check flag
+    # set the check flag
     if _can_attack(next_board, chess_board.player, next_king, en_passant=en_passant):
-        if next_board[next_king] == 15: ## ♔
-            next_board[next_king] = 31
-        if next_board[next_king] == 7:  ## ♔
-            next_board[next_king] = 23
-        if next_board[next_king] == 47: ## ♚
-            next_board[next_king] = 63
-        if next_board[next_king] == 39: ## ♚
-            next_board[next_king] = 55
+        check = True
+    else:
+        check = False
 
     return ChessBoard(
         bytes(next_board),
         not chess_board.player,
         en_passant,
         promoted,
-        *((king, next_king) if chess_board.player else (next_king, king))
+        *((king, next_king) if chess_board.player else (next_king, king)),
+        check
     )
 
 def legal_moves(chess_board, square, castle):
@@ -372,6 +362,6 @@ if __name__ == '__main__':
         print(chess_board)
         if not chess_board:
             break
-        if chess_board.is_check:
+        if chess_board.check:
             print('check!') 
     print(f'checkmate: player {chess_board.player} won!')

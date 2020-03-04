@@ -178,21 +178,12 @@ def move(chess_board, square, position): # TODO: input validation, valid non kin
     )
 
 def legal_moves(chess_board, square, castle):
-    piece = chess_board.board[square]&7
-    if piece == 2:
-        moves = _move_pawn(chess_board.board, square, en_passant=chess_board.en_passant)
-    elif piece == 3:
-        moves = _move_knight(chess_board.board, square)
-    elif piece == 4:
-        moves = _move_bishop(chess_board.board, square)
-    elif piece == 5:
-        moves = _move_rook(chess_board.board, square)
-    elif piece == 6:
-        moves = _move_queen(chess_board.board, square)
-    elif piece == 7:
-        moves = _move_king(chess_board.board, square, castle=castle and chess_board.check) #TODO: test it
-    else:
-        pass #TODO: raise expection + refactor out switch logic including _can_attack
+    moves = _move_piece(
+        chess_board.board,
+        square,
+        en_passant=chess_board.en_passant,
+        castle=castle and chess_board.check #LOW: test it
+    )
     legal_moves = []
     for move in moves:
         next_board = _apply_move(chess_board.board, square, move, castle)
@@ -200,31 +191,6 @@ def legal_moves(chess_board, square, castle):
         if not _can_attack(next_board, not chess_board.player, king, en_passant=chess_board.en_passant):
             legal_moves.append(move)
     return frozenset(legal_moves)
-
-def _can_attack(board, player, target, en_passant=0):
-    if player:
-        attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
-    else:
-        attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
-    for square in attacks:
-        piece = board[square]&7
-        if piece == 2:
-            moves = _move_pawn(board, square, en_passant=en_passant)
-        elif piece == 3:
-            moves = _move_knight(board, square)
-        elif piece == 4:
-            moves = _move_bishop(board, square)
-        elif piece == 5:
-            moves = _move_rook(board, square)
-        elif piece == 6:
-            moves = _move_queen(board, square)
-        elif piece == 7:
-            moves = _move_king(board, square)
-        else:
-            pass
-        if target in moves:
-            return True
-    return False  
 
 def _apply_move(board, square, target, castle):
     next_board = bytearray(board)
@@ -240,6 +206,35 @@ def _apply_move(board, square, target, castle):
             next_board[target+1], next_board[square-4] = next_board[square-4], 0
     
     return next_board
+
+def _can_attack(board, player, target, en_passant=0):
+    if player:
+        attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
+    else:
+        attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
+    for square in attacks:
+        moves = _move_piece(board, square, en_passant=en_passant) #LOW: test it: castle or no castle?
+        if target in moves:
+            return True
+    return False  
+
+def _move_piece(board, square, en_passant=0, castle=False):
+    piece = board[square]&7
+    if piece == 2:
+        moves = _move_pawn(board, square, en_passant=en_passant)
+    elif piece == 3:
+        moves = _move_knight(board, square)
+    elif piece == 4:
+        moves = _move_bishop(board, square)
+    elif piece == 5:
+        moves = _move_rook(board, square)
+    elif piece == 6:
+        moves = _move_queen(board, square)
+    elif piece == 7:
+        moves = _move_king(board, square, castle=castle)
+    else:
+        raise SquareError(f'{square} is not a valid square!')
+    return moves
 
 def _move_pawn(board, square, en_passant=0):
     moves = []
@@ -298,7 +293,7 @@ def _move_king(board, square, castle=False):
         if (board[square-i] == 0 or board[square-i] != 255 and
                 board[square]&32 != board[square-i]&32):
             moves.append(square-i)
-    if castle and board[square]&8:
+    if castle and board[square]&8: #FIXME: cannot move through a square that is attacked
         if (board[square+3]&7 == 5 and 0 == board[square+1] == board[square+2]):
             moves.append(square+2)
         if (board[square-4]&7 == 5 and 0 == board[square-1] == board[square-2] == board[square-3]):

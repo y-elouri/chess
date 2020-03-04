@@ -56,7 +56,7 @@ class ChessBoard(NamedTuple):
     def check(self, value):
         self.check == value
 
-def new_game(): #FIXME: update rook initial flags
+def new_game(): #FIXME: update rook + king initial flags
     with open('board.bin', mode='rb') as f:
         return ChessBoard(f.read(120), True, 0, 0, 95, 25)
 
@@ -190,7 +190,7 @@ def legal_moves(chess_board, square, castle):
     elif piece == 6:
         moves = _move_queen(chess_board.board, square)
     elif piece == 7:
-        moves = _move_king(chess_board.board, square, castle=castle)
+        moves = _move_king(chess_board.board, square, castle=castle and chess_board.check) #TODO: test it
     else:
         pass #TODO: raise expection + refactor out switch logic including _can_attack
     legal_moves = []
@@ -298,7 +298,7 @@ def _move_king(board, square, castle=False):
         if (board[square-i] == 0 or board[square-i] != 255 and
                 board[square]&32 != board[square-i]&32):
             moves.append(square-i)
-    if castle and board[square]&8 and not board[square]&16:
+    if castle and board[square]&8:
         if (board[square+3]&7 == 5 and 0 == board[square+1] == board[square+2]):
             moves.append(square+2)
         if (board[square-4]&7 == 5 and 0 == board[square-1] == board[square-2] == board[square-3]):

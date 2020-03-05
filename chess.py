@@ -1,7 +1,7 @@
 from typing import NamedTuple
+from functools import partial
 import re
 
-#TODO: finish checkmate condition
 #TODO: implement draw: stalemate | insufficient material
 #TODO: implement AI opponent
 
@@ -41,12 +41,11 @@ class ChessBoard(NamedTuple):
         return r
 
     def __bool__(self) -> bool:
-        king = self.w_king if self.player else self.b_king
-        #########################
-        # get all pieces
-        # freeze legal_moves on with current board
-        # return any(map(legal_moves, pieces))
-        return True
+        if self.player:
+            pieces = [i for i in self.board if 0 < i < 32]
+        else:
+            pieces = [i for i in self.board if 32 <= i < 64]
+        return any(map(partial(legal_moves, self, castle=False), pieces))
 
     @property
     def check(self):
@@ -124,7 +123,7 @@ def move(chess_board, square, position): # LOW: input validation, valid non king
             chess_board.board[target] and chess_board.board[s]&32 == chess_board.board[target]&32]):
         invalid_move(symbol)
 
-    if target not in legal_moves(chess_board, s, castle):
+    if target not in legal_moves(chess_board, s, castle=castle):
         invalid_move(symbol)
 
     # apply move in new board
@@ -177,7 +176,7 @@ def move(chess_board, square, position): # LOW: input validation, valid non king
         check
     )
 
-def legal_moves(chess_board, square, castle):
+def legal_moves(chess_board, square, castle=False):
     moves = _move_piece(
         chess_board.board,
         square,

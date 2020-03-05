@@ -163,7 +163,7 @@ def move(chess_board, square, position): # LOW: input validation, valid non king
         next_board[target] = 39 # remove castling flag
 
     # set the check flag
-    if _can_attack(next_board, chess_board.player, next_king, en_passant=en_passant):
+    if _under_attack(next_board, next_king, en_passant=en_passant):
         check = True
     else:
         check = False
@@ -188,7 +188,7 @@ def legal_moves(chess_board, square, castle):
     for move in moves:
         next_board = _apply_move(chess_board.board, square, move, castle)
         king = chess_board.w_king if chess_board.player else chess_board.b_king
-        if not _can_attack(next_board, not chess_board.player, king, en_passant=chess_board.en_passant):
+        if not _under_attack(next_board, king, en_passant=chess_board.en_passant):
             legal_moves.append(move)
     return frozenset(legal_moves)
 
@@ -207,11 +207,11 @@ def _apply_move(board, square, target, castle):
     
     return next_board
 
-def _can_attack(board, player, target, en_passant=0):
-    if player:
-        attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
-    else:
+def _under_attack(board, target, en_passant=0):
+    if board[target]&32:
         attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
+    else:
+        attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
     for square in attacks:
         moves = _move_piece(board, square, en_passant=en_passant) #LOW: test it: castle or no castle?
         if target in moves:
@@ -231,7 +231,7 @@ def _move_piece(board, square, en_passant=0, castle=False):
     elif piece == 6:
         moves = _move_queen(board, square)
     elif piece == 7:
-        moves = _move_king(board, square, castle=castle)
+        moves = _move_king(board, square, en_passant=en_passant, castle=castle)
     else:
         raise SquareError(f'{square} is not a valid square!')
     return moves
@@ -284,7 +284,7 @@ def _move_rook(board, square):
 def _move_queen(board, square):
     return _move_bishop(board, square) | _move_rook(board, square)
 
-def _move_king(board, square, castle=False):
+def _move_king(board, square, en_passant=0, castle=False):
     moves = []
     for i in [1, 9, 10, 11]:
         if (board[square+i] == 0 or board[square+i] != 255 and
@@ -293,11 +293,17 @@ def _move_king(board, square, castle=False):
         if (board[square-i] == 0 or board[square-i] != 255 and
                 board[square]&32 != board[square-i]&32):
             moves.append(square-i)
-    if castle and board[square]&8: #FIXME: cannot move through a square that is attacked
-        if (board[square+3]&7 == 5 and 0 == board[square+1] == board[square+2]):
-            moves.append(square+2)
-        if (board[square-4]&7 == 5 and 0 == board[square-1] == board[square-2] == board[square-3]):
-            moves.append(square-2)
+    if castle and board[square]&8:
+        if (board[square+3]&7 == 5 and
+            0 == board[square+1] == board[square+2] and
+            not _under_attack(board, square+1, en_passant=en_passant) and
+            not _under_attack(board, square+2, en_passant=en_passant)):
+                moves.append(square+2)
+        if (board[square-4]&7 == 5 and
+            0 == board[square-1] == board[square-2] == board[square-3] and
+            not _under_attack(board, square-1, en_passant=en_passant) and
+            not _under_attack(board, square-2, en_passant=en_passant)):
+                moves.append(square-2)
     return frozenset(moves)
 
 def _slide(board, square, direction):

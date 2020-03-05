@@ -56,7 +56,7 @@ class ChessBoard(NamedTuple):
     def check(self, value):
         self.check == value
 
-def new_game(): #FIXME: update rook + king initial flags
+def new_game():
     with open('board.bin', mode='rb') as f:
         return ChessBoard(f.read(120), True, 0, 0, 95, 25)
 
@@ -93,7 +93,7 @@ def promote(chess_board, choice):
         chess_board.b_king
     )
 
-def move(chess_board, square, position): # TODO: input validation, valid non king square + 0-0 | 0-0-0
+def move(chess_board, square, position): # LOW: input validation, valid non king square + 0-0 | 0-0-0
 
     def invalid_move(symbol):
         if position in {'0-0', '0-0-0'}:

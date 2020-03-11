@@ -42,14 +42,14 @@ class ChessBoard(NamedTuple):
 
     def __bool__(self) -> bool:
         if self.player:
-            pieces = [i for i in self.board if 0 < i < 32]
+            pieces = [i for i, _ in enumerate(self.board) if 0 < self.board[i] < 32]
         else:
-            pieces = [i for i in self.board if 32 <= i < 64]
+            pieces = [i for i, _ in enumerate(self.board) if 32 <= self.board[i] < 64]
         return any(map(partial(legal_moves, self, castle=False), pieces))
 
     @property
     def check(self):
-        return bool(self.board[self.w_king]&16) if self.player else bool(self.board[self.b_king]&16)
+        return self.check
 
     @check.setter
     def check(self, value):
@@ -162,7 +162,7 @@ def move(chess_board, square, position): # LOW: input validation, valid non king
         next_board[target] = 39 # remove castling flag
 
     # set the check flag
-    if _under_attack(next_board, next_king, en_passant=en_passant):
+    if _under_attack(next_board, next_king, chess_board.player, en_passant=en_passant):
         check = True
     else:
         check = False
@@ -181,13 +181,16 @@ def legal_moves(chess_board, square, castle=False):
         chess_board.board,
         square,
         en_passant=chess_board.en_passant,
-        castle=castle and chess_board.check #LOW: test it
+        castle=castle and not chess_board.check
     )
     legal_moves = []
     for move in moves:
         next_board = _apply_move(chess_board.board, square, move, castle)
-        king = chess_board.w_king if chess_board.player else chess_board.b_king
-        if not _under_attack(next_board, king, en_passant=chess_board.en_passant):
+        if chess_board.board[square]&7 == 7:
+            king = move
+        else:
+            king = chess_board.w_king if chess_board.player else chess_board.b_king
+        if not _under_attack(next_board, king, not chess_board.player, en_passant=chess_board.en_passant):
             legal_moves.append(move)
     return frozenset(legal_moves)
 
@@ -206,11 +209,11 @@ def _apply_move(board, square, target, castle):
     
     return next_board
 
-def _under_attack(board, target, en_passant=0):
-    if board[target]&32:
-        attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
-    else:
+def _under_attack(board, target, player, en_passant=0):
+    if player:
         attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
+    else:
+        attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
     for square in attacks:
         moves = _move_piece(board, square, en_passant=en_passant) #LOW: test it: castle or no castle?
         if target in moves:
@@ -240,9 +243,9 @@ def _move_pawn(board, square, en_passant=0):
     if board[square]&32:
         if board[square+10] == 0:
             moves.append(square+10)
-        if board[square+9] > 0 and board[square]&32 != board[square+9]&32:
+        if board[square+9] not in {0, 255} and board[square]&32 != board[square+9]&32:
             moves.append(square+9)
-        if board[square+11] > 0 and board[square]&32 != board[square+11]&32:
+        if board[square+11] not in {0, 255} and board[square]&32 != board[square+11]&32:
             moves.append(square+11)
         if board[square+20] == 0 and board[square]&8:
             moves.append(square+20)
@@ -251,9 +254,9 @@ def _move_pawn(board, square, en_passant=0):
     else:
         if board[square-10] == 0:
             moves.append(square-10)
-        if board[square-9] > 0 and board[square]&32 != board[square-9]&32:
+        if board[square-9] not in {0, 255} and board[square]&32 != board[square-9]&32:
             moves.append(square-9)
-        if board[square-11] > 0 and board[square]&32 != board[square-11]&32:
+        if board[square-11] not in {0, 255} and board[square]&32 != board[square-11]&32:
             moves.append(square-11)
         if board[square-20] == 0 and board[square]&8:
             moves.append(square-20)
@@ -295,13 +298,13 @@ def _move_king(board, square, en_passant=0, castle=False):
     if castle and board[square]&8:
         if (board[square+3]&7 == 5 and
             0 == board[square+1] == board[square+2] and
-            not _under_attack(board, square+1, en_passant=en_passant) and
-            not _under_attack(board, square+2, en_passant=en_passant)):
+            not _under_attack(board, square+1, board[square]&32, en_passant=en_passant) and
+            not _under_attack(board, square+2, board[square]&32, en_passant=en_passant)):
                 moves.append(square+2)
         if (board[square-4]&7 == 5 and
             0 == board[square-1] == board[square-2] == board[square-3] and
-            not _under_attack(board, square-1, en_passant=en_passant) and
-            not _under_attack(board, square-2, en_passant=en_passant)):
+            not _under_attack(board, square-1, board[square]&32, en_passant=en_passant) and
+            not _under_attack(board, square-2, board[square]&32, en_passant=en_passant)):
                 moves.append(square-2)
     return frozenset(moves)
 
@@ -313,6 +316,7 @@ def _slide(board, square, direction):
             moves.append(position)
         elif board[square]&32 != board[position]&32:
             moves.append(position)
+            break
         else:
             break
         position += direction
@@ -365,3 +369,4 @@ if __name__ == '__main__':
         if chess_board.check:
             print('check!') 
     print(f'checkmate: player {chess_board.player} won!')
+

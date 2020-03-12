@@ -2,7 +2,7 @@ from typing import NamedTuple
 from functools import partial
 import re
 
-#TODO: implement draw: stalemate | insufficient material
+#TODO: implement draw: insufficient material
 #TODO: implement AI opponent
 
 W_PIECES = ('\u2659', '\u2658', '\u2657', '\u2656', '\u2655', '\u2654')
@@ -342,6 +342,8 @@ if __name__ == '__main__':
     chess_board = new_game()
     print(chess_board)
     while True:
+        if chess_board.check:
+            print('check!')
         try:
             square, position, *_ = input(f"player {1 if chess_board.player else 2}'s turn ==> ").split()
         except ValueError:
@@ -365,8 +367,8 @@ if __name__ == '__main__':
                 print(err)
         print(chess_board)
         if not chess_board:
+            if chess_board.check:
+                print(f'checkmate: player {chess_board.player} won!')
+            else:
+                print('game over: stalemate!')
             break
-        if chess_board.check:
-            print('check!') 
-    print(f'checkmate: player {chess_board.player} won!')
-

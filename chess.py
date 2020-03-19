@@ -2,7 +2,6 @@ from typing import NamedTuple
 from functools import partial
 import re
 
-#TODO: implement draw: insufficient material
 #TODO: implement AI opponent
 
 W_PIECES = ('\u2659', '\u2658', '\u2657', '\u2656', '\u2655', '\u2654')
@@ -48,12 +47,47 @@ class ChessBoard(NamedTuple):
         return any(map(partial(legal_moves, self, castle=False), pieces))
 
     @property
-    def check(self):
-        return self.check
-
-    @check.setter
-    def check(self, value):
-        self.check == value
+    def material(self):
+        wp = sorted(i&7 for i in self.board if 0 < i < 32)
+        bp = sorted(i&7 for i in self.board if 32 <= i < 64)
+        ## obvious draws
+        # K vs K
+        if [7] == wp == bp:
+            return False
+        # K vs KN
+        elif (wp == [7] and bp == [3, 7]) or (bp == [7] and wp == [3, 7]):
+            return False 
+        # K vs KB
+        elif (wp == [7] and bp == [4, 7]) or (bp == [7] and wp == [4, 7]):
+            return False
+        # KB vs KB if bishops on same color
+        elif [4, 7] == wp == bp:
+            bishops = [i&7 for i in self.board if i == 4]
+            if all(map(lambda x: sum([10 - x//10, x % 10]) % 2 == 0, bishops)):
+                return False
+        ## simple heuristics
+        # K  vs KNN
+        elif (wp == [7] and bp == [3, 3, 7]) or (bp == [7] and wp == [3, 3, 7]):
+            return False
+        # KB vs KNN
+        elif (wp == [2, 7] and bp == [3, 3, 7]) or (wp == [2, 7] and bp == [3, 3, 7]):
+            return False
+        # KN vs KNN
+        elif (wp == [3, 7] and bp == [3, 3, 7]) or (bp == [3, 7] and wp == [3, 3, 7]):
+            return False
+        # KB vs KN
+        elif (wp == [2, 7] and bp == [3, 7]) or (bp == [2, 7] and wp == [3, 7]):
+            return False
+        # KN vs KN
+        elif [3, 7] == wp == bp:
+            return False
+        # KN vs KBN
+        elif (wp == [3, 7] and bp == [3, 4, 7]) or (bp == [3, 7] and wp == [3, 4, 7]):
+            return False
+        # KB vs KBN
+        elif (wp == [4, 7] and bp == [3, 4, 7]) or (bp == [4, 7] and wp == [3, 4, 7]]):
+            return False
+        return True
 
 def new_game():
     with open('board.bin', mode='rb') as f:
@@ -366,9 +400,11 @@ if __name__ == '__main__':
             except PromotionError as err:
                 print(err)
         print(chess_board)
+        if not chess_board.material:
+            print('draw: insufficient material!')
         if not chess_board:
             if chess_board.check:
                 print(f'checkmate: player {chess_board.player} won!')
             else:
-                print('game over: stalemate!')
+                print('draw: stalemate!')
             break

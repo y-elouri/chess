@@ -85,7 +85,7 @@ class ChessBoard(NamedTuple):
         elif (wp == [3, 7] and bp == [3, 4, 7]) or (bp == [3, 7] and wp == [3, 4, 7]):
             return False
         # KB vs KBN
-        elif (wp == [4, 7] and bp == [3, 4, 7]) or (bp == [4, 7] and wp == [3, 4, 7]]):
+        elif (wp == [4, 7] and bp == [3, 4, 7]) or (bp == [4, 7] and wp == [3, 4, 7]):
             return False
         return True
 
@@ -126,7 +126,7 @@ def promote(chess_board, choice):
         chess_board.b_king
     )
 
-def move(chess_board, square, position): # LOW: input validation, valid non king square + 0-0 | 0-0-0
+def move(chess_board, square, position):
 
     def invalid_move(symbol):
         if position in {'0-0', '0-0-0'}:
@@ -245,11 +245,11 @@ def _apply_move(board, square, target, castle):
 
 def _under_attack(board, target, player, en_passant=0):
     if player:
-        attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
+        attacks = (i for i in range(21, 100) if not board[i]&32 and 0 < board[i] < 255)
     else:
-        attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
+        attacks = (i for i in range(21, 100) if board[i]&32 and 0 < board[i] < 255)
     for square in attacks:
-        moves = _move_piece(board, square, en_passant=en_passant) #LOW: test it: castle or no castle?
+        moves = _move_piece(board, square, en_passant=en_passant)
         if target in moves:
             return True
     return False  

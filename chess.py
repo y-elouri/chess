@@ -229,7 +229,7 @@ def _apply_move(board, square, target, castle):
     next_board[target], next_board[square] = next_board[square], 0
 
     # handle castling
-    if castle:
+    if castle and board[target]&7 == 7:
         if target == square+2: # 0-0
             next_board[target-1], next_board[square+3] = next_board[square+3], 0
         else: # 0-0-0

@@ -174,16 +174,10 @@ def move(chess_board, square, position):
     # promote pawn
     promoted = target if next_board[target]&7 == 2 and target // 10 in {2, 9} else 0
 
-    # handle pawn special moves
-    if next_board[target] == 10: ## ♙
-        next_board[target] = 2 # remove double-step flag
-        if s - target == 20:
-            en_passant = target # set en passant flag
-    elif next_board[target] == 42: ## ♟
-        next_board[target] = 34 # remove double-step flag
-        if target - s == 20:
-            en_passant = target # set en passant flag
-    # update castling rights
+    # set en passant flag
+    if next_board[target]&7 == 2 and abs(s - target) == 20:
+        en_passant = target 
+    # update king's castling rights
     elif next_board[target] == 5: ## ♖
         if next_board[king] == 15:
             next_board[king] = 7 # remove castling flag
@@ -281,7 +275,7 @@ def _move_pawn(board, square, en_passant=0):
             moves.append(square+9)
         if board[square+11] not in {0, 255} and board[square]&32 != board[square+11]&32:
             moves.append(square+11)
-        if board[square+20] == 0 and board[square]&8:
+        if board[square+20] == 0 and square // 10 == 3:
             moves.append(square+20)
         if en_passant and square // 10 == 6 and abs(en_passant - square) == 1:
             moves.append(en_passant+10)
@@ -292,7 +286,7 @@ def _move_pawn(board, square, en_passant=0):
             moves.append(square-9)
         if board[square-11] not in {0, 255} and board[square]&32 != board[square-11]&32:
             moves.append(square-11)
-        if board[square-20] == 0 and board[square]&8:
+        if board[square-20] == 0 and square // 10 == 8:
             moves.append(square-20)
         if en_passant and square // 10 == 5 and abs(en_passant - square) == 1:
             moves.append(en_passant-10)

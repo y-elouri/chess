@@ -271,23 +271,23 @@ def _move_pawn(board, square, en_passant=0):
     if board[square]&32:
         if board[square+10] == 0:
             moves.append(square+10)
+            if square // 10 == 3 and board[square+20] == 0:
+                moves.append(square+20)
         if board[square+9] not in {0, 255} and board[square]&32 != board[square+9]&32:
             moves.append(square+9)
         if board[square+11] not in {0, 255} and board[square]&32 != board[square+11]&32:
             moves.append(square+11)
-        if board[square+20] == 0 and square // 10 == 3:
-            moves.append(square+20)
         if en_passant and square // 10 == 6 and abs(en_passant - square) == 1:
             moves.append(en_passant+10)
     else:
         if board[square-10] == 0:
             moves.append(square-10)
+            if square // 10 == 8 and board[square-20] == 0:
+                moves.append(square-20)
         if board[square-9] not in {0, 255} and board[square]&32 != board[square-9]&32:
             moves.append(square-9)
         if board[square-11] not in {0, 255} and board[square]&32 != board[square-11]&32:
             moves.append(square-11)
-        if board[square-20] == 0 and square // 10 == 8:
-            moves.append(square-20)
         if en_passant and square // 10 == 5 and abs(en_passant - square) == 1:
             moves.append(en_passant-10)
     return frozenset(moves)

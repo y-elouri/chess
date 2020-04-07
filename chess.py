@@ -3,6 +3,7 @@ import re
 from typing import NamedTuple
 from functools import partial
 
+#TODO: move tests to separate folder
 #TODO: implement AI opponent
 
 W_PIECES = ('\u2659', '\u2658', '\u2657', '\u2656', '\u2655', '\u2654')

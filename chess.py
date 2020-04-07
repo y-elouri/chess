@@ -217,8 +217,8 @@ def legal_moves(chess_board, square, castle=False):
         if chess_board.board[square]&7 == 7:
             king = move
         else:
-            king = chess_board.w_king if chess_board.player else chess_board.b_king
-        if not _under_attack(next_board, king, not chess_board.player, en_passant=chess_board.en_passant):
+            king = chess_board.b_king if chess_board.board[square]&32 else chess_board.w_king
+        if not _under_attack(next_board, king, chess_board.board[square]&32, en_passant=chess_board.en_passant):
             legal_moves.append(move)
     return frozenset(legal_moves)
 

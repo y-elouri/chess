@@ -1,6 +1,7 @@
+import re
+
 from typing import NamedTuple
 from functools import partial
-import re
 
 #TODO: implement AI opponent
 

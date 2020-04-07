@@ -1,8 +1,9 @@
-from typing import NamedTuple
-from functools import partial
 import re
 
-#TODO: implement draw: insufficient material
+from typing import NamedTuple
+from functools import partial
+
+#TODO: move tests to separate folder
 #TODO: implement AI opponent
 
 W_PIECES = ('\u2659', '\u2658', '\u2657', '\u2656', '\u2655', '\u2654')
@@ -48,12 +49,47 @@ class ChessBoard(NamedTuple):
         return any(map(partial(legal_moves, self, castle=False), pieces))
 
     @property
-    def check(self):
-        return self.check
-
-    @check.setter
-    def check(self, value):
-        self.check == value
+    def material(self):
+        wp = sorted(i&7 for i in self.board if 0 < i < 32)
+        bp = sorted(i&7 for i in self.board if 32 <= i < 64)
+        ## obvious draws
+        # K vs K
+        if [7] == wp == bp:
+            return False
+        # K vs KN
+        elif (wp == [7] and bp == [3, 7]) or (bp == [7] and wp == [3, 7]):
+            return False 
+        # K vs KB
+        elif (wp == [7] and bp == [4, 7]) or (bp == [7] and wp == [4, 7]):
+            return False
+        # KB vs KB if bishops on same color
+        elif [4, 7] == wp == bp:
+            bishops = [i&7 for i in self.board if i == 4]
+            if all(map(lambda x: sum([10 - x//10, x % 10]) % 2 == 0, bishops)):
+                return False
+        ## simple heuristics
+        # K  vs KNN
+        elif (wp == [7] and bp == [3, 3, 7]) or (bp == [7] and wp == [3, 3, 7]):
+            return False
+        # KB vs KNN
+        elif (wp == [2, 7] and bp == [3, 3, 7]) or (wp == [2, 7] and bp == [3, 3, 7]):
+            return False
+        # KN vs KNN
+        elif (wp == [3, 7] and bp == [3, 3, 7]) or (bp == [3, 7] and wp == [3, 3, 7]):
+            return False
+        # KB vs KN
+        elif (wp == [2, 7] and bp == [3, 7]) or (bp == [2, 7] and wp == [3, 7]):
+            return False
+        # KN vs KN
+        elif [3, 7] == wp == bp:
+            return False
+        # KN vs KBN
+        elif (wp == [3, 7] and bp == [3, 4, 7]) or (bp == [3, 7] and wp == [3, 4, 7]):
+            return False
+        # KB vs KBN
+        elif (wp == [4, 7] and bp == [3, 4, 7]) or (bp == [4, 7] and wp == [3, 4, 7]):
+            return False
+        return True
 
 def new_game():
     with open('board.bin', mode='rb') as f:
@@ -92,7 +128,7 @@ def promote(chess_board, choice):
         chess_board.b_king
     )
 
-def move(chess_board, square, position): # LOW: input validation, valid non king square + 0-0 | 0-0-0
+def move(chess_board, square, position):
 
     def invalid_move(symbol):
         if position in {'0-0', '0-0-0'}:
@@ -140,16 +176,10 @@ def move(chess_board, square, position): # LOW: input validation, valid non king
     # promote pawn
     promoted = target if next_board[target]&7 == 2 and target // 10 in {2, 9} else 0
 
-    # handle pawn special moves
-    if next_board[target] == 10: ## ♙
-        next_board[target] = 2 # remove double-step flag
-        if s - target == 20:
-            en_passant = target # set en passant flag
-    elif next_board[target] == 42: ## ♟
-        next_board[target] = 34 # remove double-step flag
-        if target - s == 20:
-            en_passant = target # set en passant flag
-    # update castling rights
+    # set en passant flag
+    if next_board[target]&7 == 2 and abs(s - target) == 20:
+        en_passant = target 
+    # update king's castling rights
     elif next_board[target] == 5: ## ♖
         if next_board[king] == 15:
             next_board[king] = 7 # remove castling flag
@@ -189,8 +219,8 @@ def legal_moves(chess_board, square, castle=False):
         if chess_board.board[square]&7 == 7:
             king = move
         else:
-            king = chess_board.w_king if chess_board.player else chess_board.b_king
-        if not _under_attack(next_board, king, not chess_board.player, en_passant=chess_board.en_passant):
+            king = chess_board.b_king if chess_board.board[square]&32 else chess_board.w_king
+        if not _under_attack(next_board, king, chess_board.board[square]&32, en_passant=chess_board.en_passant):
             legal_moves.append(move)
     return frozenset(legal_moves)
 
@@ -201,7 +231,7 @@ def _apply_move(board, square, target, castle):
     next_board[target], next_board[square] = next_board[square], 0
 
     # handle castling
-    if castle:
+    if castle and board[target]&7 == 7:
         if target == square+2: # 0-0
             next_board[target-1], next_board[square+3] = next_board[square+3], 0
         else: # 0-0-0
@@ -211,11 +241,11 @@ def _apply_move(board, square, target, castle):
 
 def _under_attack(board, target, player, en_passant=0):
     if player:
-        attacks = (i for i in range(100) if not board[i]&32 and 0 < board[i] < 255)
+        attacks = (i for i in range(21, 100) if not board[i]&32 and 0 < board[i] < 255)
     else:
-        attacks = (i for i in range(100) if board[i]&32 and 0 < board[i] < 255)
+        attacks = (i for i in range(21, 100) if board[i]&32 and 0 < board[i] < 255)
     for square in attacks:
-        moves = _move_piece(board, square, en_passant=en_passant) #LOW: test it: castle or no castle?
+        moves = _move_piece(board, square, en_passant=en_passant)
         if target in moves:
             return True
     return False  
@@ -243,23 +273,23 @@ def _move_pawn(board, square, en_passant=0):
     if board[square]&32:
         if board[square+10] == 0:
             moves.append(square+10)
+            if square // 10 == 3 and board[square+20] == 0:
+                moves.append(square+20)
         if board[square+9] not in {0, 255} and board[square]&32 != board[square+9]&32:
             moves.append(square+9)
         if board[square+11] not in {0, 255} and board[square]&32 != board[square+11]&32:
             moves.append(square+11)
-        if board[square+20] == 0 and board[square]&8:
-            moves.append(square+20)
         if en_passant and square // 10 == 6 and abs(en_passant - square) == 1:
             moves.append(en_passant+10)
     else:
         if board[square-10] == 0:
             moves.append(square-10)
+            if square // 10 == 8 and board[square-20] == 0:
+                moves.append(square-20)
         if board[square-9] not in {0, 255} and board[square]&32 != board[square-9]&32:
             moves.append(square-9)
         if board[square-11] not in {0, 255} and board[square]&32 != board[square-11]&32:
             moves.append(square-11)
-        if board[square-20] == 0 and board[square]&8:
-            moves.append(square-20)
         if en_passant and square // 10 == 5 and abs(en_passant - square) == 1:
             moves.append(en_passant-10)
     return frozenset(moves)
@@ -366,9 +396,11 @@ if __name__ == '__main__':
             except PromotionError as err:
                 print(err)
         print(chess_board)
+        if not chess_board.material:
+            print('draw: insufficient material!')
         if not chess_board:
             if chess_board.check:
                 print(f'checkmate: player {chess_board.player} won!')
             else:
-                print('game over: stalemate!')
+                print('draw: stalemate!')
             break
